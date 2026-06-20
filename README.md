@@ -1,6 +1,6 @@
 # SmartData Agent
 
-An agentic AI pipeline that autonomously cleans, analyzes, and explains any CSV or JSON dataset. Drop in your data — the agent figures out what to do with it.
+An agentic AI pipeline that autonomously cleans, analyzes, and explains any CSV or JSON dataset. Drop in your data and agent figures out what to do with it.
 
 Built with Python, Groq (LLaMA 3.3 70B), and Streamlit.
 
@@ -11,10 +11,10 @@ Built with Python, Groq (LLaMA 3.3 70B), and Streamlit.
 Most data analysis tools make you tell them what to run. SmartData Agent reasons about your dataset first, then decides which analyses actually make sense for it.
 
 1. **Ingests** your CSV or JSON file and profiles the schema
-2. **Cleans** missing values column by column — drops, imputes, or flags based on data type and severity
+2. **Cleans** missing values column by column it drops, imputes, or flags based on data type and severity
 3. **Sends the schema** to LLaMA 3.3 via Groq, which decides which analysis tools to call
-4. **Runs the tools** — stats, distributions, correlation heatmap, outlier detection, time series
-5. **Writes a plain-english summary** of what it found
+4. **Runs the tools** : stats, distributions, correlation heatmap, outlier detection, time series
+5. **Writes a plain english summary** of what it found
 6. **Saves** all plots and a markdown report to the `output/` folder
 
 ---
@@ -24,7 +24,7 @@ Most data analysis tools make you tell them what to run. SmartData Agent reasons
 ```
 smartdata-agent/
 ├── agent/
-│   ├── agent.py          # core agentic loop — calls Groq, executes tools
+│   ├── agent.py          # core agentic loop which calls Groq, executes tools
 │   └── tools.py          # analysis functions + missing value handler
 ├── utils/
 │   └── file_parser.py    # file loading, schema profiling, type casting
@@ -56,7 +56,7 @@ Create a `.env` file in the project root:
 GROQ_API_KEY=gsk_your_key_here
 ```
 
-Get a free key at [console.groq.com](https://console.groq.com) — no credit card needed.
+Get a free key at [console.groq.com](https://console.groq.com) it doesn't require credit card.
 
 **3. Run it**
 
@@ -131,10 +131,10 @@ Every run produces:
 
 - **Python 3.11+**
 - **Groq API** — LLaMA 3.3 70B for agentic reasoning
-- **Pandas + NumPy** — data manipulation
-- **Matplotlib + Seaborn + SciPy** — visualization
-- **Rich** — terminal UI
-- **Streamlit** — web interface
+- **Pandas + NumPy** — Data manipulation
+- **Matplotlib + Seaborn + SciPy** — Visualization
+- **Rich** — Terminal UI
+- **Streamlit** — Web interface
 
 ---
 
