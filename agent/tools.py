@@ -33,15 +33,16 @@ def handle_missing_values(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     report = {}  # we'll track what we did to each column so the agent can explain it
 
     for col in df.columns:
+
+        # skip ID-like columns first -- before anything else
+        # imputing a column where every value is unique makes no sense
+        if df[col].nunique() == len(df):
+            continue
+
         missing_count = df[col].isnull().sum()
 
         # nothing to do here
         if missing_count == 0:
-            continue
-        
-        # skip columns that look like IDs -- all unique values, imputing them makes no sense
-        if df[col].nunique() == len(df):
-            report[col] = "skipped (looks like an ID column -- all unique values)"
             continue
 
         missing_pct = missing_count / len(df)
@@ -90,11 +91,13 @@ def handle_missing_values(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
 
 # ─────────────────────────────────────────────
 # ANALYSIS TOOLS
-# these are the functions the Claude agent will call based on the data
+# these are the functions the agent will call based on the data
 # ─────────────────────────────────────────────
 
 # basic descriptive stats -- always the first thing you want to know about a dataset
 def summary_stats(df: pd.DataFrame) -> dict:
+    # drop ID-like columns before analysis -- sequential IDs have no meaningful stats
+    df = df[[col for col in df.columns if df[col].nunique() < len(df)]]
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
     if not numeric_cols:
@@ -119,6 +122,8 @@ def summary_stats(df: pd.DataFrame) -> dict:
 # distribution plots help us see the shape of each numeric column
 # we plot histogram + KDE overlay so both count and density are visible
 def plot_distributions(df: pd.DataFrame) -> list[str]:
+    # drop ID-like columns -- their distribution is always uniform and meaningless
+    df = df[[col for col in df.columns if df[col].nunique() < len(df)]]
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     saved_files = []
 
@@ -129,7 +134,7 @@ def plot_distributions(df: pd.DataFrame) -> list[str]:
     for col in numeric_cols:
         fig, ax = plt.subplots(figsize=(7, 4))
 
-        # KDE=True gives us the smooth density curve on top of the histogram
+        # KDE gives us the smooth density curve on top of the histogram
         df[col].dropna().plot(kind="hist", bins=30, edgecolor="white",
                                color="#5c8dd6", alpha=0.85, density=True, ax=ax)
         df[col].dropna().plot(kind="kde", color="#e05c5c", linewidth=2, ax=ax)
@@ -147,6 +152,8 @@ def plot_distributions(df: pd.DataFrame) -> list[str]:
 # correlation heatmap -- great for spotting which features move together
 # this is especially useful before running any ML model
 def plot_correlation_heatmap(df: pd.DataFrame) -> str | None:
+    # drop ID-like columns -- they produce false correlations
+    df = df[[col for col in df.columns if df[col].nunique() < len(df)]]
     numeric_df = df.select_dtypes(include=[np.number])
 
     if numeric_df.shape[1] < 2:
@@ -177,6 +184,8 @@ def plot_correlation_heatmap(df: pd.DataFrame) -> str | None:
 # IQR is better for skewed data, Z-score for roughly normal distributions
 # we run both and report which rows are flagged by either
 def detect_outliers(df: pd.DataFrame) -> dict:
+    # drop ID-like columns -- sequential IDs will always look like outliers
+    df = df[[col for col in df.columns if df[col].nunique() < len(df)]]
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     outlier_report = {}
 
@@ -258,8 +267,8 @@ def plot_missing_heatmap(df: pd.DataFrame) -> str | None:
 
 
 # ─────────────────────────────────────────────
-# TOOL DEFINITIONS FOR THE CLAUDE AGENT
-# this is what gets passed to the API so Claude knows what tools exist
+# TOOL DEFINITIONS FOR THE AGENT
+# this is what gets passed to the API so the model knows what tools exist
 # and what arguments each one takes
 # ─────────────────────────────────────────────
 
@@ -322,7 +331,7 @@ TOOL_DEFINITIONS = [
 
 
 # maps tool name strings (what the agent returns) to the actual functions above
-# agent.py uses this to call the right function based on Claude's decision
+# agent.py uses this to call the right function based on the model's decision
 TOOL_FUNCTIONS = {
     "summary_stats": summary_stats,
     "plot_distributions": plot_distributions,
