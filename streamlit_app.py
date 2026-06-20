@@ -5,6 +5,8 @@ import json
 import tempfile
 from dotenv import load_dotenv
 
+os.makedirs("output", exist_ok=True)
+
 load_dotenv()
 
 st.set_page_config(

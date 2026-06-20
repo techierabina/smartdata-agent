@@ -38,6 +38,11 @@ def handle_missing_values(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         # nothing to do here
         if missing_count == 0:
             continue
+        
+        # skip columns that look like IDs -- all unique values, imputing them makes no sense
+        if df[col].nunique() == len(df):
+            report[col] = "skipped (looks like an ID column -- all unique values)"
+            continue
 
         missing_pct = missing_count / len(df)
 

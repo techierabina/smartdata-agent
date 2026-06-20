@@ -131,7 +131,16 @@ based on this, decide which analysis tools to run and call them."""
         for tool_call in response_message.tool_calls:
             tool_name = tool_call.function.name
             console.print(f"[cyan]→ running:[/cyan] [bold]{tool_name}[/bold]")
-
+            # skip if this tool already ran -- groq sometimes calls the same tool twice
+            if tool_name in results:
+                console.print(f"[dim]  skipping {tool_name} -- already ran[/dim]")
+                output = results[tool_name]
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": json.dumps(output, default=str),
+                })
+                continue
             tool_fn = TOOL_FUNCTIONS.get(tool_name)
             if tool_fn is None:
                 output = f"tool '{tool_name}' not found"
