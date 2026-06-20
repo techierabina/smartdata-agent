@@ -168,7 +168,44 @@ def main():
         padding=(0, 3),
     ))
     console.print()
+def generate_summary(df, profile: dict, results: dict) -> str:
+    
+    # build a rich context from everything we found so the summary is specific
+    # not generic -- it should read like a real analyst wrote it
+    context = f"""you analyzed a dataset with {profile['shape']['rows']} rows and {profile['shape']['columns']} columns.
 
+missing value handling done:
+{json.dumps(results.get('_missing_report', {}), indent=2)}
+
+summary statistics:
+{json.dumps(results.get('summary_stats', {}), indent=2, default=str)}
+
+outlier detection:
+{json.dumps(results.get('detect_outliers', {}), indent=2, default=str)}
+
+tools that were run: {', '.join(results.keys())}
+"""
+
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": """you are a friendly data analyst writing a summary for a non-technical audience.
+write 3-4 short paragraphs in plain english about what the data shows.
+be specific -- mention actual numbers, column names, and real findings.
+do not use bullet points. write in flowing prose like a real analyst report.
+start with what the dataset is about, then talk about data quality, then key findings."""
+            },
+            {
+                "role": "user",
+                "content": f"write a summary of this analysis:\n\n{context}"
+            }
+        ],
+        max_tokens=800,
+    )
 
 if __name__ == "__main__":
     main()

@@ -14,6 +14,7 @@ console = Console()
 # message format -- we handle that in the loop below
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+
 # convert our tool definitions to the format groq expects
 # groq follows the OpenAI tool spec so the structure is slightly different
 def _to_groq_tools(tool_definitions: list) -> list:
@@ -32,6 +33,10 @@ def _to_groq_tools(tool_definitions: list) -> list:
 
 def run_agent(df, profile: dict):
 
+    # initialize results first so it's available everywhere in this function
+    # this was the bug -- results was being referenced before it was defined
+    results = {}
+
     console.print(Panel.fit(
         "[bold cyan]SmartData Agent[/bold cyan] — starting analysis",
         border_style="cyan"
@@ -40,6 +45,7 @@ def run_agent(df, profile: dict):
     # step 1: handle missing values before any analysis runs
     console.print("\n[bold yellow]handling missing values...[/bold yellow]")
     df, missing_report = handle_missing_values(df)
+    results["_missing_report"] = missing_report
 
     if missing_report:
         _print_missing_report(missing_report)
@@ -80,8 +86,6 @@ based on this, decide which analysis tools to run and call them."""
 
     console.print("\n[bold yellow]agent is deciding which analyses to run...[/bold yellow]\n")
 
-    results = {}
-
     # step 3: agentic loop -- keep calling groq until it stops using tools
     # groq returns tool calls in response.choices[0].message.tool_calls
     while True:
@@ -112,7 +116,7 @@ based on this, decide which analysis tools to run and call them."""
             ] or None,
         })
 
-        # if no tool calls, the model is done -- print the final summary
+        # if no tool calls, the model is done -- generate written summary and break
         if not response_message.tool_calls:
             final_text = response_message.content
             if final_text:
@@ -149,12 +153,61 @@ based on this, decide which analysis tools to run and call them."""
                 "content": json.dumps(output, default=str),
             })
 
-    # step 5: save markdown report
+    # step 5: generate written summary using groq
+    # this is what appears in the streamlit summary card before the download button
+    console.print("\n[bold yellow]generating written summary...[/bold yellow]")
+    summary = _generate_summary(profile, missing_report, results)
+    results["_written_summary"] = summary
+
+    # step 6: save markdown report
     _save_markdown_report(profile, missing_report, results)
 
     console.print("\n[bold green]analysis complete.[/bold green] check the [cyan]output/[/cyan] folder for plots and the report.\n")
 
     return results
+
+
+# generates a proper written paragraph summary of all findings
+# called after all tools have run so it has full context to work with
+def _generate_summary(profile: dict, missing_report: dict, results: dict) -> str:
+    context = f"""you analyzed a dataset with {profile['shape']['rows']} rows and {profile['shape']['columns']} columns.
+
+missing value handling:
+{json.dumps(missing_report, indent=2)}
+
+summary statistics:
+{json.dumps(results.get('summary_stats', {}), indent=2, default=str)}
+
+outlier detection:
+{json.dumps(results.get('detect_outliers', {}), indent=2, default=str)}
+
+tools that ran: {', '.join([k for k in results.keys() if not k.startswith('_')])}
+"""
+
+    try:
+        summary_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        response = summary_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """you are a friendly data analyst writing a summary for a non-technical audience.
+write 3-4 short paragraphs in plain english about what the data shows.
+be specific -- mention actual numbers, column names, and real findings.
+do not use bullet points. write in flowing prose like a real analyst report.
+start with what the dataset contains, then talk about data quality, then key findings."""
+                },
+                {
+                    "role": "user",
+                    "content": f"write a summary of this analysis:\n\n{context}"
+                }
+            ],
+            max_tokens=800,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        # if summary generation fails, return a basic fallback so the app doesn't crash
+        return f"Analysis complete. {len([k for k in results.keys() if not k.startswith('_')])} tools were run on a dataset with {profile['shape']['rows']} rows and {profile['shape']['columns']} columns."
 
 
 def _print_missing_report(report: dict):
@@ -179,6 +232,10 @@ def _save_markdown_report(profile: dict, missing_report: dict, results: dict):
         lines.append("\n## Missing Value Handling\n")
         for col, action in missing_report.items():
             lines.append(f"- `{col}`: {action}")
+
+    if "_written_summary" in results:
+        lines.append("\n## Summary\n")
+        lines.append(results["_written_summary"])
 
     if "summary_stats" in results and isinstance(results["summary_stats"], dict):
         lines.append("\n## Summary Statistics\n")
