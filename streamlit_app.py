@@ -555,3 +555,61 @@ if "results" in st.session_state:
             file_name="smartdata_report.md",
             mime="text/markdown",
         )
+
+
+# ── chat with your data ───────────────────────────────────────────────────────
+st.markdown("---")
+st.markdown('<p class="section-label">Ask a question about your data</p>', unsafe_allow_html=True)
+
+# clear chat history when a new file is uploaded
+if "last_file" not in st.session_state or st.session_state["last_file"] != uploaded_file.name:
+    st.session_state["chat_history"] = []
+    st.session_state["last_file"] = uploaded_file.name
+
+# show existing chat messages
+if "chat_history" in st.session_state:
+    for message in st.session_state["chat_history"]:
+        if message["role"] == "user":
+            st.markdown(f"""
+            <div style="text-align:right; margin: 8px 0;">
+                <span style="background:#7c3aed; color:white; padding:8px 14px;
+                border-radius:12px 12px 2px 12px; font-size:13px; display:inline-block;
+                max-width:75%; text-align:left;">
+                    {message["content"]}
+                </span>
+            </div>""", unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="text-align:left; margin: 8px 0;">
+                <span style="background:#f3e8ff; color:#3b0764; padding:8px 14px;
+                border-radius:12px 12px 12px 2px; font-size:13px; display:inline-block;
+                max-width:75%; text-align:left; line-height:1.6;">
+                    {message["content"]}
+                </span>
+            </div>""", unsafe_allow_html=True)
+
+# input box fixed at bottom feel
+question = st.chat_input("Ask anything about your dataset...")
+
+if question and "results" in st.session_state:
+    from agent.agent import chat_with_data
+
+    # add user message to history
+    st.session_state["chat_history"].append({"role": "user", "content": question})
+
+    # get answer from groq
+    with st.spinner("thinking..."):
+        answer = chat_with_data(
+            question,
+            profile,
+            st.session_state["results"]
+        )
+
+    # add answer to history
+    st.session_state["chat_history"].append({"role": "assistant", "content": answer})
+
+    # rerun to show the new messages
+    st.rerun()
+
+elif question and "results" not in st.session_state:
+    st.warning("Run the agent analysis first before asking questions.")

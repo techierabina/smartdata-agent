@@ -275,3 +275,55 @@ def _save_markdown_report(profile: dict, missing_report: dict, results: dict):
         f.write("\n".join(lines))
 
     console.print(f"[dim]report saved → {report_path}[/dim]")
+
+
+# answers a user question about their dataset using the analysis results as context
+# this is what powers the chat feature in streamlit -- groq never sees raw data,
+# just the stats, outliers, schema, and missing value report we already computed
+def chat_with_data(question: str, profile: dict, results: dict) -> str:
+
+    # build a rich context from everything the agent already found
+    # the more specific the context, the more specific the answers
+    context = f"""you have already analyzed a dataset with the following profile:
+
+shape: {profile['shape']['rows']} rows, {profile['shape']['columns']} columns
+columns: {', '.join(profile['columns'].keys())}
+
+missing value handling (already completed before analysis):
+{json.dumps(results.get('_missing_report', {}), indent=2)}
+
+note: if missing_report is empty, it means the data had no missing values or they were already cleaned.
+"""
+
+summary statistics:
+{json.dumps(results.get('summary_stats', {}), indent=2, default=str)}
+
+outlier detection:
+{json.dumps(results.get('detect_outliers', {}), indent=2, default=str)}
+"""
+
+    try:
+        chat_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        response = chat_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"""you are a data analyst assistant. a user has just analyzed their dataset 
+and wants to ask questions about it. answer based only on the analysis results provided.
+be specific -- reference actual numbers and column names from the context.
+keep answers concise, 2-4 sentences max. write in plain english, no bullet points.
+
+here is the analysis context:
+{context}"""
+                },
+                {
+                    "role": "user",
+                    "content": question
+                }
+            ],
+            max_tokens=400,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"couldn't answer that right now: {str(e)}"

@@ -9,23 +9,16 @@
 
 ## Summary
 
-The dataset we analyzed contains 891 rows and 12 columns, providing a comprehensive overview of various characteristics of passengers. The columns include passengerid, survived, pclass, age, sibsp, parch, and fare, among others. With a total of 891 rows, this dataset offers a substantial amount of information to draw meaningful insights from. 
+The dataset we analyzed contains 891 rows and 12 columns, providing a comprehensive overview of the information at hand. With no missing values to handle, we were able to dive straight into exploratory data analysis. Our initial examination revealed interesting insights into the distribution of values across various columns. For instance, the 'survived' column, which indicates whether a person survived or not, has a mean of 0.3838 and a median of 0, suggesting that about 38% of the individuals in the dataset survived. The 'pclass' column, which represents the passenger class, has a mean of 2.3086 and a median of 3, indicating that most passengers were in the third class.
 
-In terms of data quality, our analysis revealed that the dataset has no missing values, as indicated by the empty dictionary in the missing value handling section. This suggests that the data is complete and reliable, which is essential for making accurate predictions or conclusions. Additionally, our outlier detection tools found that some columns, such as age, sibsp, parch, and fare, are likely to have outliers, with a significant number of outliers detected using both interquartile range (IQR) and z-score methods. For instance, the age column has 66 IQR outliers and 7 z-score outliers, which may indicate that these values are significantly different from the rest of the data.
+In terms of data quality, our analysis suggests that the dataset is generally well-behaved, with no significant issues that would hinder our analysis. The outlier detection results, however, do indicate the presence of outliers in several columns, including 'age', 'sibsp', 'parch', and 'fare'. Specifically, the 'age' column has 66 outliers according to the interquartile range (IQR) method and 7 outliers according to the z-score method, while the 'fare' column has 116 outliers according to the IQR method and 20 outliers according to the z-score method. These findings suggest that the data may require some cleaning or transformation before proceeding with further analysis.
 
-Our summary statistics analysis provided valuable insights into the distribution of values in each column. For example, the mean passengerid is 446.0, and the median is also 446.0, indicating a symmetrical distribution. The survived column has a mean of 0.3838, which means that approximately 38% of the passengers survived. The pclass column has a mean of 2.3086, and the median is 3.0, suggesting that most passengers were in the third class. The age column has a mean of 29.3616 and a median of 28.0, indicating that the majority of passengers were in their late 20s. 
+Our key findings from the analysis reveal some interesting patterns in the data. The 'age' column has a mean of 29.3616 and a median of 28, with a standard deviation of 13.0197, indicating a relatively wide range of ages in the dataset. The 'fare' column, on the other hand, has a mean of 32.2042 and a median of 14.4542, with a standard deviation of 49.6934, suggesting a significant variation in fares paid by passengers. The 'sibsp' and 'parch' columns, which represent the number of siblings/spouses and parents/children aboard, respectively, also exhibit interesting patterns, with means of 0.523 and 0.3816, respectively.
 
-Some of the key findings from our analysis include the fact that the fare column has a wide range of values, with a minimum of 0.0 and a maximum of 512.3292, indicating significant variation in the prices paid by passengers. The sibsp and parch columns also show a wide range of values, with some passengers having many siblings or spouses aboard, while others had none. These findings suggest that the dataset contains a diverse range of passengers with varying characteristics, and further analysis could help identify patterns or relationships between these characteristics and the likelihood of survival.
+Overall, our analysis provides a solid foundation for further exploration of the dataset. With a good understanding of the distribution of values and the presence of outliers, we can now proceed to investigate relationships between columns and identify potential correlations or patterns that may be hidden in the data. The 'plot_distributions', 'plot_missing_heatmap', and 'plot_correlation_heatmap' tools will be useful in visualizing these relationships and gaining a deeper understanding of the dataset.
 
 ## Summary Statistics
 
-### passengerid
-- mean: 446.0
-- median: 446.0
-- std: 257.3538
-- min: 1
-- max: 891
-- skewness: 0.0
 ### survived
 - mean: 0.3838
 - median: 0.0
@@ -78,7 +71,6 @@ Some of the key findings from our analysis include the fact that the fare column
 
 ## Plots Generated
 
-- output/dist_passengerid.png
 - output/dist_survived.png
 - output/dist_pclass.png
 - output/dist_age.png
