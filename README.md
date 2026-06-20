@@ -135,10 +135,10 @@ Every run produces:
 
 - **Python 3.11+**
 - **Groq API** — LLaMA 3.3 70B for agentic reasoning and chat
-- **Pandas + NumPy** — data manipulation
-- **Matplotlib + Seaborn + SciPy** — visualization
-- **Rich** — terminal UI
-- **Streamlit** — web interface
+- **Pandas + NumPy** — Data manipulation
+- **Matplotlib + Seaborn + SciPy** — Visualization
+- **Rich** — Terminal UI
+- **Streamlit** — Web interface
 
 ---
 
