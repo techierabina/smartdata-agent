@@ -1,6 +1,6 @@
 # SmartData Agent
 
-An agentic AI pipeline that autonomously cleans, analyzes, and explains any CSV or JSON dataset. Drop in your data and agent figures out what to do with it.
+An agentic AI pipeline that autonomously cleans, analyzes, and explains any CSV or JSON dataset. Drop in your data and the agent figures out what to do with it.
 
 Built with Python, Groq (LLaMA 3.3 70B), and Streamlit.
 
@@ -11,11 +11,12 @@ Built with Python, Groq (LLaMA 3.3 70B), and Streamlit.
 Most data analysis tools make you tell them what to run. SmartData Agent reasons about your dataset first, then decides which analyses actually make sense for it.
 
 1. **Ingests** your CSV or JSON file and profiles the schema
-2. **Cleans** missing values column by column it drops, imputes, or flags based on data type and severity
+2. **Cleans** missing values column by column — drops, imputes, or flags based on data type and severity
 3. **Sends the schema** to LLaMA 3.3 via Groq, which decides which analysis tools to call
-4. **Runs the tools** : stats, distributions, correlation heatmap, outlier detection, time series
-5. **Writes a plain english summary** of what it found
+4. **Runs the tools** — stats, distributions, correlation heatmap, outlier detection, time series
+5. **Writes a plain-english summary** of what it found
 6. **Saves** all plots and a markdown report to the `output/` folder
+7. **Lets you chat with your data** after analysis — ask questions like "which column has the most outliers?" and get answers grounded in the actual analysis results
 
 ---
 
@@ -24,7 +25,7 @@ Most data analysis tools make you tell them what to run. SmartData Agent reasons
 ```
 smartdata-agent/
 ├── agent/
-│   ├── agent.py          # core agentic loop which calls Groq, executes tools
+│   ├── agent.py          # core agentic loop — calls Groq, executes tools
 │   └── tools.py          # analysis functions + missing value handler
 ├── utils/
 │   └── file_parser.py    # file loading, schema profiling, type casting
@@ -56,7 +57,7 @@ Create a `.env` file in the project root:
 GROQ_API_KEY=gsk_your_key_here
 ```
 
-Get a free key at [console.groq.com](https://console.groq.com) it doesn't require credit card.
+Get a free key at [console.groq.com](https://console.groq.com) — no credit card needed.
 
 **3. Run it**
 
@@ -77,7 +78,7 @@ streamlit run streamlit_app.py
 The agent doesn't hardcode which analyses to run. It sends the dataset schema — column names, types, missing value counts, sample values — to LLaMA 3.3 and lets the model reason about what's useful.
 
 ```
-schema profile → Groq (LLaMA 3.3) → tool calls → results → written summary
+schema profile → Groq (LLaMA 3.3) → tool calls → results → written summary → chat
 ```
 
 For example, on the Titanic dataset the agent:
@@ -87,6 +88,7 @@ For example, on the Titanic dataset the agent:
 - Ran summary stats, distribution plots, outlier detection, and correlation heatmap
 - Skipped time series (no datetime column)
 - Wrote a paragraph summary of the key findings
+- Answered follow-up questions like "is this dataset ready to train a model on?"
 
 ---
 
@@ -101,6 +103,7 @@ Each column gets handled individually based on what makes sense for that data ty
 | Categorical / text column | Fill with mode (most frequent value) |
 | Datetime column | Forward fill |
 | Low % missing, unclear type | Add a `colname_is_null` flag column |
+| All unique values (ID column) | Skip — imputing IDs makes no sense |
 
 ---
 
@@ -114,6 +117,7 @@ Each column gets handled individually based on what makes sense for that data ty
 | `detect_outliers` | IQR and Z-score outlier counts per column |
 | `plot_time_series` | Numeric values over time (auto-detects datetime columns) |
 | `plot_missing_heatmap` | Visual map of where missing values are across the dataset |
+| `chat_with_data` | Ask plain-english questions and get answers grounded in the actual analysis results |
 
 ---
 
@@ -130,18 +134,17 @@ Every run produces:
 ## Tech stack
 
 - **Python 3.11+**
-- **Groq API** — LLaMA 3.3 70B for agentic reasoning
-- **Pandas + NumPy** — Data manipulation
-- **Matplotlib + Seaborn + SciPy** — Visualization
-- **Rich** — Terminal UI
-- **Streamlit** — Web interface
+- **Groq API** — LLaMA 3.3 70B for agentic reasoning and chat
+- **Pandas + NumPy** — data manipulation
+- **Matplotlib + Seaborn + SciPy** — visualization
+- **Rich** — terminal UI
+- **Streamlit** — web interface
 
 ---
 
 ## Requirements
 
 ```
-anthropic>=0.25.0
 pandas>=2.0.0
 numpy>=1.26.0
 matplotlib>=3.8.0
