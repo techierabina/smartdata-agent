@@ -23,7 +23,7 @@ def load_file(filepath: str) -> pd.DataFrame:
     return df
 
 
-# CSV loading is straightforward but we try a couple of encodings
+# CSV loading is straightforward but we try a different encodings
 # because files exported from Excel or Google Sheets sometimes break with utf-8
 def _load_csv(filepath: str) -> pd.DataFrame:
     try:
@@ -102,8 +102,8 @@ def clean_column_names(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# tries to cast columns to better types automatically
-# pandas often reads everything as object/string, this fixes that
+# pandas reads almost everything as strings by default
+# this goes through each column and fixes that where it can
 def cast_column_types(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 

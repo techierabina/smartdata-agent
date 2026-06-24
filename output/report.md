@@ -9,13 +9,13 @@
 
 ## Summary
 
-The dataset we analyzed contains 891 rows and 12 columns, providing a comprehensive overview of various factors related to the survival of individuals. Upon examining the data quality, we found that there are no missing values in the dataset, which is a significant advantage in our analysis. With a clean and complete dataset, we can proceed with confidence to explore the characteristics and relationships within the data.
+The dataset we analyzed contains 891 rows and 12 columns, providing a comprehensive overview of various factors. Upon initial inspection, we found that the data is relatively clean, with no missing values reported. This suggests that the data is well-maintained and suitable for analysis. The columns in the dataset include "survived", "pclass", "age", "sibsp", "parch", and "fare", among others, which are likely to be relevant for understanding the relationships between these variables.
 
-Our summary statistics revealed some interesting insights into the distribution of values in key columns. For instance, the "survived" column has a mean of 0.3838, indicating that approximately 38% of the individuals survived. The "age" column has a mean of 29.36 years, with a standard deviation of 13.02 years, suggesting a relatively wide age range. The "fare" column has a mean of $32.20, with a standard deviation of $49.69, indicating significant variability in the fares paid by individuals. These statistics provide a foundation for understanding the characteristics of the data and identifying potential patterns or trends.
+In terms of data quality, our analysis revealed that the distribution of values in the columns is generally skewed. For instance, the "age" column has a mean of 29.36 years and a median of 28 years, with a standard deviation of 13.02 years. Similarly, the "fare" column has a highly skewed distribution, with a mean of $32.20 and a median of $14.45, indicating a wide range of values. The "sibsp" and "parch" columns also exhibit skewness, with means of 0.52 and 0.38, respectively. These findings suggest that the data may require transformation or normalization to ensure accurate analysis.
 
-The outlier detection analysis revealed that several columns, including "age", "sibsp", "parch", and "fare", are likely to contain outliers. Specifically, the "age" column has 66 outliers based on the interquartile range (IQR) method and 7 outliers based on the z-score method. Similarly, the "fare" column has 116 outliers based on the IQR method and 20 outliers based on the z-score method. These findings suggest that there may be some unusual or extreme values in these columns that could impact our analysis and may require additional attention or handling.
+Our key findings indicate that there are likely outliers in several columns, including "age", "sibsp", "parch", and "fare". Specifically, the "age" column has 66 outliers based on the interquartile range (IQR) method and 7 outliers based on the z-score method. Similarly, the "fare" column has 116 outliers based on the IQR method and 20 outliers based on the z-score method. These outliers may be influencing the summary statistics and should be investigated further to determine their impact on the analysis. For example, the "survived" column has a mean of 0.38, indicating that approximately 38% of the individuals in the dataset survived, but the presence of outliers in other columns may be affecting this proportion.
 
-Overall, our analysis provides a solid understanding of the characteristics and distribution of values in the dataset. The presence of outliers in certain columns highlights the need for careful consideration and potential data cleaning or transformation to ensure accurate and reliable results. With this foundation, we can proceed to explore relationships between columns, identify patterns, and develop insights that can inform decision-making or further investigation.
+Overall, our analysis suggests that the data is complex and requires careful consideration of outliers and skewness to ensure accurate interpretations. By understanding the distribution of values in each column and accounting for outliers, we can gain a deeper insight into the relationships between these variables and make more informed decisions. Further analysis, such as visualizing the distributions of values and examining correlations between columns, may provide additional insights into the dataset.
 
 ## Summary Statistics
 
@@ -70,11 +70,3 @@ Overall, our analysis provides a solid understanding of the characteristics and 
 - `fare` likely has outliers (IQR: 116, Z-score: 20)
 
 ## Plots Generated
-
-- output/dist_survived.png
-- output/dist_pclass.png
-- output/dist_age.png
-- output/dist_sibsp.png
-- output/dist_parch.png
-- output/dist_fare.png
-- output/correlation_heatmap.png

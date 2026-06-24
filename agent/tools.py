@@ -1,18 +1,21 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import seaborn as sns
 import os
 
+# without this, matplotlib tries to open a window on the server and crashes
+matplotlib.use("Agg")
 
-# all plots get saved here -- we create it if it doesn't exist yet
+# create the output dir for the terminal version (app.py)
+# streamlit uses in-memory figures so it doesn't need this
 OUTPUT_DIR = "output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-# helper to save and close plots cleanly
-# calling plt.close() after every plot is important otherwise
-# matplotlib stacks figures in memory and things get slow
+# saves a plot to disk -- only the terminal version needs this
+# streamlit renders figures directly from memory
 def _save_plot(filename: str) -> str:
     filepath = os.path.join(OUTPUT_DIR, filename)
     plt.savefig(filepath, bbox_inches="tight", dpi=150)
@@ -25,63 +28,57 @@ def _save_plot(filename: str) -> str:
 # MISSING VALUE HANDLING
 # ─────────────────────────────────────────────
 
-# this is the brain of the cleaning step
-# instead of blindly filling everything the same way,
-# we look at each column individually and decide the best strategy
 def handle_missing_values(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     df = df.copy()
-    report = {}  # we'll track what we did to each column so the agent can explain it
+    report = {}  # keeps track of what we did to each column so the agent can explain it
 
     for col in df.columns:
 
-        # skip ID-like columns first -- before anything else
-        # imputing a column where every value is unique makes no sense
+        # skip ID-like columns before anything else
+        # filling in a column where every value is unique makes no sense
         if df[col].nunique() == len(df):
             continue
 
         missing_count = df[col].isnull().sum()
 
-        # nothing to do here
+        # nothing missing here, move on
         if missing_count == 0:
             continue
 
         missing_pct = missing_count / len(df)
 
-        # case 1: more than 50% missing -- not worth keeping, just drop the column
+        # case 1: more than half the column is gone -- not worth saving
         if missing_pct > 0.5:
             df.drop(columns=[col], inplace=True)
             report[col] = f"dropped (>{round(missing_pct*100)}% missing)"
             continue
 
-        # case 2: datetime columns -- forward fill makes the most sense
-        # because the previous timestamp is usually the best guess
+        # case 2: datetime columns -- the previous value is usually the best guess
         if pd.api.types.is_datetime64_any_dtype(df[col]):
             df[col] = df[col].ffill()
             report[col] = f"forward filled ({missing_count} values)"
             continue
 
-        # case 3: numeric columns -- use median instead of mean
-        # median is more robust when there are outliers pulling the mean around
+        # case 3: numeric columns -- median holds up better than mean when outliers exist
         if pd.api.types.is_numeric_dtype(df[col]):
             median_val = df[col].median()
             df[col] = df[col].fillna(median_val)
             report[col] = f"filled with median ({median_val:.2f}), {missing_count} values"
             continue
 
-        # case 4: categorical or text columns -- use mode (most frequent value)
+        # case 4: categorical or text -- fill with whatever shows up most
         if hasattr(df[col], 'cat') or df[col].dtype == object:
             mode_val = df[col].mode()
             if len(mode_val) > 0:
                 df[col] = df[col].fillna(mode_val[0])
                 report[col] = f"filled with mode ('{mode_val[0]}'), {missing_count} values"
             else:
-                # edge case: no mode found, just flag it
+                # no mode found -- flag it and move on
                 df[f"{col}_is_null"] = df[col].isnull().astype(int)
                 report[col] = f"flagged with '{col}_is_null' column (no mode found)"
             continue
 
-        # case 5: anything else with low missing % -- just flag it and move on
-        # we don't want to make assumptions about columns we can't identify
+        # case 5: low missing %, unclear type -- add an indicator column and leave it alone
         if missing_pct <= 0.05:
             df[f"{col}_is_null"] = df[col].isnull().astype(int)
             report[col] = f"flagged with '{col}_is_null' column ({missing_count} values, low %)"
@@ -91,12 +88,11 @@ def handle_missing_values(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
 
 # ─────────────────────────────────────────────
 # ANALYSIS TOOLS
-# these are the functions the agent will call based on the data
+# each function returns a figure for Streamlit and saves to disk for the terminal
 # ─────────────────────────────────────────────
 
-# basic descriptive stats -- always the first thing you want to know about a dataset
 def summary_stats(df: pd.DataFrame) -> dict:
-    # drop ID-like columns before analysis -- sequential IDs have no meaningful stats
+    # plotting passengerid stats tells you nothing -- skip ID-like columns
     df = df[[col for col in df.columns if df[col].nunique() < len(df)]]
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
@@ -111,30 +107,27 @@ def summary_stats(df: pd.DataFrame) -> dict:
             "std": round(df[col].std(), 4),
             "min": round(df[col].min(), 4),
             "max": round(df[col].max(), 4),
-            # skewness tells us if the data leans left or right
-            # anything above 1 or below -1 is worth flagging
+            # skewness above 1 or below -1 usually means something interesting is going on
             "skewness": round(df[col].skew(), 4),
         }
 
     return stats
 
 
-# distribution plots help us see the shape of each numeric column
-# we plot histogram + KDE overlay so both count and density are visible
-def plot_distributions(df: pd.DataFrame) -> list[str]:
-    # drop ID-like columns -- their distribution is always uniform and meaningless
+def plot_distributions(df: pd.DataFrame) -> list:
+    # plotting passengerid as a distribution tells you nothing -- skip it
     df = df[[col for col in df.columns if df[col].nunique() < len(df)]]
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    saved_files = []
+    figures = []  # list of (col_name, figure) tuples -- streamlit iterates over these
 
     if not numeric_cols:
         print("no numeric columns to plot distributions for")
-        return saved_files
+        return figures
 
     for col in numeric_cols:
         fig, ax = plt.subplots(figsize=(7, 4))
 
-        # KDE gives us the smooth density curve on top of the histogram
+        # histogram shows the counts, KDE shows the shape -- both together is clearest
         df[col].dropna().plot(kind="hist", bins=30, edgecolor="white",
                                color="#5c8dd6", alpha=0.85, density=True, ax=ax)
         df[col].dropna().plot(kind="kde", color="#e05c5c", linewidth=2, ax=ax)
@@ -143,16 +136,18 @@ def plot_distributions(df: pd.DataFrame) -> list[str]:
         ax.set_xlabel(col)
         ax.set_ylabel("density")
         ax.spines[["top", "right"]].set_visible(False)
+        plt.tight_layout()
 
-        saved_files.append(_save_plot(f"dist_{col}.png"))
+        figures.append((col, fig))
 
-    return saved_files
+        # terminal version still needs the file on disk
+        _save_plot(f"dist_{col}.png")
+
+    return figures
 
 
-# correlation heatmap -- great for spotting which features move together
-# this is especially useful before running any ML model
-def plot_correlation_heatmap(df: pd.DataFrame) -> str | None:
-    # drop ID-like columns -- they produce false correlations
+def plot_correlation_heatmap(df: pd.DataFrame):
+    # ID columns produce false correlations -- drop them first
     df = df[[col for col in df.columns if df[col].nunique() < len(df)]]
     numeric_df = df.select_dtypes(include=[np.number])
 
@@ -176,15 +171,16 @@ def plot_correlation_heatmap(df: pd.DataFrame) -> str | None:
     )
     ax.set_title("correlation matrix", fontsize=13)
     plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
 
-    return _save_plot("correlation_heatmap.png")
+    # terminal version still needs the file on disk
+    _save_plot("correlation_heatmap.png")
+
+    return fig
 
 
-# outlier detection using both IQR and Z-score
-# IQR is better for skewed data, Z-score for roughly normal distributions
-# we run both and report which rows are flagged by either
 def detect_outliers(df: pd.DataFrame) -> dict:
-    # drop ID-like columns -- sequential IDs will always look like outliers
+    # sequential IDs will always look like outliers -- skip them
     df = df[[col for col in df.columns if df[col].nunique() < len(df)]]
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     outlier_report = {}
@@ -192,29 +188,27 @@ def detect_outliers(df: pd.DataFrame) -> dict:
     for col in numeric_cols:
         col_data = df[col].dropna()
 
-        # IQR method
+        # IQR works better for skewed data
         Q1 = col_data.quantile(0.25)
         Q3 = col_data.quantile(0.75)
         IQR = Q3 - Q1
         iqr_outliers = ((df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)).sum()
 
-        # Z-score method -- flag anything beyond 3 standard deviations
+        # Z-score works better when the distribution is roughly normal
         z_scores = np.abs((df[col] - col_data.mean()) / col_data.std())
         z_outliers = (z_scores > 3).sum()
 
         outlier_report[col] = {
             "iqr_outliers": int(iqr_outliers),
             "zscore_outliers": int(z_outliers),
-            # if both methods agree a column has outliers, it's definitely worth investigating
+            # if both methods agree, it's definitely worth looking at
             "likely_has_outliers": iqr_outliers > 0 and z_outliers > 0,
         }
 
     return outlier_report
 
 
-# time series plot -- only runs if we detect a datetime column
-# we plot all numeric columns over time on the same chart
-def plot_time_series(df: pd.DataFrame) -> str | None:
+def plot_time_series(df: pd.DataFrame):
     date_cols = df.select_dtypes(include=["datetime64"]).columns.tolist()
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 
@@ -241,97 +235,78 @@ def plot_time_series(df: pd.DataFrame) -> str | None:
     ax.legend(loc="upper left", fontsize=9)
     ax.spines[["top", "right"]].set_visible(False)
     plt.xticks(rotation=30)
+    plt.tight_layout()
 
-    return _save_plot("time_series.png")
+    # terminal version still needs the file on disk
+    _save_plot("time_series.png")
+
+    return fig
 
 
-# missing data heatmap -- visualizes where the gaps are across the whole dataset
-# rows on y-axis, columns on x-axis, white = missing, colored = present
-def plot_missing_heatmap(df: pd.DataFrame) -> str | None:
+def plot_missing_heatmap(df: pd.DataFrame):
     if df.isnull().sum().sum() == 0:
-        print("no missing values found -- skipping missing data heatmap")
+        print("no missing values -- skipping heatmap")
         return None
 
     fig, ax = plt.subplots(figsize=(max(8, len(df.columns)), 5))
     sns.heatmap(
         df.isnull(),
         cbar=False,
-        cmap="viridis",   # yellow = missing, purple = present
+        cmap="viridis",       # yellow = missing, purple = present
         ax=ax,
-        yticklabels=False  # row labels get cluttered with large datasets
+        yticklabels=False     # row labels get cluttered on large datasets
     )
     ax.set_title("missing value map (yellow = missing)", fontsize=13)
     plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
 
-    return _save_plot("missing_heatmap.png")
+    # terminal version still needs the file on disk
+    _save_plot("missing_heatmap.png")
+
+    return fig
 
 
 # ─────────────────────────────────────────────
 # TOOL DEFINITIONS FOR THE AGENT
-# this is what gets passed to the API so the model knows what tools exist
-# and what arguments each one takes
+# what gets passed to the API so the model knows what tools exist
 # ─────────────────────────────────────────────
 
 TOOL_DEFINITIONS = [
     {
         "name": "summary_stats",
         "description": "computes descriptive statistics (mean, median, std, min, max, skewness) for all numeric columns",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []}
     },
     {
         "name": "plot_distributions",
         "description": "plots histogram + KDE distribution for each numeric column and saves to output folder",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []}
     },
     {
         "name": "plot_correlation_heatmap",
         "description": "generates a correlation heatmap for all numeric columns -- useful for feature relationship analysis",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []}
     },
     {
         "name": "detect_outliers",
         "description": "detects outliers in numeric columns using both IQR and Z-score methods",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []}
     },
     {
         "name": "plot_time_series",
         "description": "plots numeric columns over time -- only runs if a datetime column exists in the dataset",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []}
     },
     {
         "name": "plot_missing_heatmap",
         "description": "visualizes where missing values are across the dataset as a heatmap",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "input_schema": {"type": "object", "properties": {}, "required": []}
     },
 ]
 
 
-# maps tool name strings (what the agent returns) to the actual functions above
-# agent.py uses this to call the right function based on the model's decision
+# maps tool name strings to actual functions
+# agent.py uses this is to call the right function based on what the model decides
 TOOL_FUNCTIONS = {
     "summary_stats": summary_stats,
     "plot_distributions": plot_distributions,

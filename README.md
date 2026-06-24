@@ -1,3 +1,7 @@
+
+## Live Demo
+Try it live → https://smartdata-agent.streamlit.app
+
 # SmartData Agent
 
 An agentic AI pipeline that autonomously cleans, analyzes, and explains any CSV or JSON dataset. Drop in your data and the agent figures out what to do with it.
@@ -57,7 +61,7 @@ Create a `.env` file in the project root:
 GROQ_API_KEY=gsk_your_key_here
 ```
 
-Get a free key at [console.groq.com](https://console.groq.com) — no credit card needed.
+Get a free key at [console.groq.com](https://console.groq.com) — you don't need credit card.
 
 **3. Run it**
 

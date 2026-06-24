@@ -10,8 +10,8 @@ from agent.tools import TOOL_DEFINITIONS, TOOL_FUNCTIONS, handle_missing_values
 
 console = Console()
 
-# groq uses the same tool-use pattern as anthropic but with a slightly different
-# message format -- we handle that in the loop below
+
+
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
@@ -86,8 +86,8 @@ based on this, decide which analysis tools to run and call them."""
 
     console.print("\n[bold yellow]agent is deciding which analyses to run...[/bold yellow]\n")
 
-    # step 3: agentic loop -- keep calling groq until it stops using tools
-    # groq returns tool calls in response.choices[0].message.tool_calls
+    # keep calling groq until it stops asking for tools
+    # each round it either calls a tool or writes a final summary and stops
     while True:
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -157,7 +157,7 @@ based on this, decide which analysis tools to run and call them."""
                     output = f"error running {tool_name}: {str(e)}"
                     console.print(f"[red]  error: {e}[/red]")
 
-            # feed the tool result back so the model can continue reasoning
+            # send the result back so groq knows what happened and can decide what to do next
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
@@ -217,7 +217,7 @@ start with what the dataset contains, then talk about data quality, then key fin
         )
         return response.choices[0].message.content
     except Exception as e:
-        # if summary generation fails, return a basic fallback so the app doesn't crash
+        # if something went wrong with groq -- return something basic rather than crashing the app
         return f"Analysis complete. {len([k for k in results.keys() if not k.startswith('_')])} tools were run on a dataset with {profile['shape']['rows']} rows and {profile['shape']['columns']} columns."
 
 
@@ -284,8 +284,8 @@ def _save_markdown_report(profile: dict, missing_report: dict, results: dict):
 # just the stats, outliers, schema, and missing value report we already computed
 def chat_with_data(question: str, profile: dict, results: dict) -> str:
 
-    # build a rich context from everything the agent already found
-    # the more specific the context, the more specific the answers
+    # groq only sees the analysis results, not the raw data
+    # the more detail we give it here, the better its answers will be
     context = f"""you have already analyzed a dataset with the following profile:
 
 shape: {profile['shape']['rows']} rows, {profile['shape']['columns']} columns
