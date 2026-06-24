@@ -1,6 +1,6 @@
 
 ## Live Demo
-https://smartdata-agent-8kffv9i6exu84v3wztzofa.streamlit.app/
+[Try SmartData Agent →](https://smartdatarabina.streamlit.app)
 
 # SmartData Agent
 
